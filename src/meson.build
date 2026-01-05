@@ -12,11 +12,18 @@ mutter_lib_deps = [
   m_dep,
 ]
 
+json_glib_dep = dependency(
+  'json-glib-1.0',
+  version: '>= 1.4',   # optional but recommended
+  required: true
+)
+
 mutter_pkg_deps = [
   cairo_dep,
   gio_unix_dep,
   glib_dep,
   gsettings_desktop_schemas_dep,
+  json_glib_dep,
 ]
 
 mutter_pkg_private_deps = [

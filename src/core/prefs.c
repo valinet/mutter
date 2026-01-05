@@ -32,6 +32,7 @@
 #include <gio/gio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <json-glib/json-glib.h>
 
 #include "compositor/meta-plugin-manager.h"
 #include "core/keybindings-private.h"
