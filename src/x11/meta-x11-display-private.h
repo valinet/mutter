@@ -133,6 +133,7 @@ struct _MetaX11Display
 
   GSubprocess *frames_client;
   GCancellable *frames_client_cancellable;
+  gboolean frames_client_reload_settings;
 
   GSource *event_source;
 

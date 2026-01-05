@@ -1265,6 +1265,8 @@ on_frames_client_died (GObject      *source,
       if (signum != SIGTERM && signum != SIGKILL)
         meta_x11_display_init_frames_client (x11_display);
     }
+  else if (x11_display->frames_client_reload_settings)
+    meta_x11_display_init_frames_client (x11_display);
 }
 
 #ifdef HAVE_X11
@@ -1326,6 +1328,7 @@ meta_x11_display_init_frames_client (MetaX11Display *x11_display)
   const char *display_name;
 
   display_name = get_display_name (x11_display->display);
+  x11_display->frames_client_reload_settings = FALSE;
   x11_display->frames_client_cancellable = g_cancellable_new ();
   x11_display->frames_client = meta_frame_launch_client (x11_display,
                                                          display_name);
