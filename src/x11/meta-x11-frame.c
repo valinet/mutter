@@ -571,6 +571,12 @@ meta_frame_launch_client (MetaX11Display *x11_display,
   args[1] = NULL;
 
   launcher = g_subprocess_launcher_new (G_SUBPROCESS_FLAGS_NONE);
+  double scale = meta_prefs_get_wayland_scale_factor();
+  if (scale) {
+    char* str_scale = g_strdup_printf ("%f", scale);
+    g_subprocess_launcher_setenv (launcher, "WAYLAND_SCALE_FACTOR", str_scale, TRUE);
+    g_free (str_scale);
+  }
   g_subprocess_launcher_setenv (launcher, "DISPLAY", display_name, TRUE);
 
   proc = g_subprocess_launcher_spawnv (launcher, args, &error);

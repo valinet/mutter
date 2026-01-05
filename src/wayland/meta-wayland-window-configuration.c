@@ -31,7 +31,7 @@ meta_wayland_window_configuration_new (MetaWindow          *window,
                                        MtkRectangle         rect,
                                        int                  bounds_width,
                                        int                  bounds_height,
-                                       int                  scale,
+                                       float                  scale,
                                        MetaMoveResizeFlags  flags,
                                        MetaGravity          gravity)
 {
@@ -82,7 +82,7 @@ meta_wayland_window_configuration_new_relative (MetaWindow *window,
                                                 int         rel_y,
                                                 int         width,
                                                 int         height,
-                                                int         scale)
+                                                float         scale)
 {
   MetaWindowWayland *wl_window = META_WINDOW_WAYLAND (window);
   MetaWaylandWindowConfiguration *configuration;
@@ -111,7 +111,7 @@ meta_wayland_window_configuration_new_relative (MetaWindow *window,
 MetaWaylandWindowConfiguration *
 meta_wayland_window_configuration_new_empty (int bounds_width,
                                              int bounds_height,
-                                             int scale)
+                                             float scale)
 {
   MetaWaylandWindowConfiguration *configuration;
 

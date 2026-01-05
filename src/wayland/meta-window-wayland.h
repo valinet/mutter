@@ -37,11 +37,14 @@ G_DECLARE_FINAL_TYPE (MetaWindowWayland, meta_window_wayland,
 MetaWindow * meta_window_wayland_new       (MetaDisplay        *display,
                                             MetaWaylandSurface *surface);
 
+void meta_window_wayland_set_geometry_scale_for_window (MetaWindowWayland *wl_window,
+                                                        float              geometry_scale);
+
 void meta_window_wayland_finish_move_resize (MetaWindow              *window,
                                              MtkRectangle             new_geom,
                                              MetaWaylandSurfaceState *pending);
 
-int meta_window_wayland_get_geometry_scale (MetaWindow *window);
+float meta_window_wayland_get_geometry_scale (MetaWindow *window);
 
 void meta_window_place_with_placement_rule (MetaWindow        *window,
                                             MetaPlacementRule *placement_rule);

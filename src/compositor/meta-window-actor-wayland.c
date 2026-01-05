@@ -53,6 +53,7 @@ struct _MetaWindowActorWayland
   MetaSurfaceContainerActorWayland *surface_container;
   gulong highest_scale_monitor_handler_id;
   gboolean needs_sync;
+  gulong size_changed_id;
 };
 
 static void cullable_iface_init (MetaCullableInterface *iface);
@@ -281,7 +282,7 @@ static MtkRegion *
 calculate_background_cull_region (MetaWindowActorWayland *self)
 {
   MetaWindowActor *window_actor = META_WINDOW_ACTOR (self);
-  int geometry_scale;
+  float geometry_scale;
   MtkRectangle rect;
 
   geometry_scale = meta_window_actor_get_geometry_scale (window_actor);
@@ -440,17 +441,44 @@ meta_window_actor_wayland_get_scanout_candidate (MetaWindowActor *actor)
 }
 
 static void
+surface_size_changed (MetaSurfaceActor *actor,
+                      gpointer          user_data)
+{
+  MetaWindowActorWayland *actor_wayland = META_WINDOW_ACTOR_WAYLAND (user_data);
+  MetaWindow *window = meta_window_actor_get_meta_window (META_WINDOW_ACTOR (actor_wayland));
+  MtkRectangle rect;
+
+  meta_window_get_frame_rect (window, &rect);
+  //g_print ("Size changed for %s: %dx%d (position: %d,%d)\n",
+  //         window->res_name ? window->res_name : "(unnamed)",
+  //         rect.width, rect.height,
+  //         rect.x, rect.y, rect.height); // 1.666667f
+}
+
+static void
 meta_window_actor_wayland_assign_surface_actor (MetaWindowActor  *actor,
                                                 MetaSurfaceActor *surface_actor)
 {
   MetaWindowActorClass *parent_class =
     META_WINDOW_ACTOR_CLASS (meta_window_actor_wayland_parent_class);
+  MetaSurfaceActor *prev_surface_actor;
+  MetaWindowActorWayland *actor_wayland = META_WINDOW_ACTOR_WAYLAND (actor);
 
   g_warn_if_fail (!meta_window_actor_get_surface (actor));
+
+  prev_surface_actor = meta_window_actor_get_surface (actor);
+  if (prev_surface_actor)
+    g_clear_signal_handler (&META_WINDOW_ACTOR_WAYLAND (actor)->size_changed_id,
+                            prev_surface_actor);
 
   parent_class->assign_surface_actor (actor, surface_actor);
 
   meta_window_actor_wayland_rebuild_surface_tree (actor);
+
+  actor_wayland->size_changed_id =
+    g_signal_connect (surface_actor, "size-changed",
+                      G_CALLBACK (surface_size_changed),
+                      actor_wayland);
 }
 
 static void
@@ -544,7 +572,7 @@ maybe_configure_black_background (MetaWindowActorWayland *self,
   MetaWindowActor *window_actor = META_WINDOW_ACTOR (self);
   MetaWindow *window = meta_window_actor_get_meta_window (window_actor);
   MetaLogicalMonitor *logical_monitor;
-  int geometry_scale;
+  float geometry_scale;
   MtkRectangle fullscreen_layout;
   ClutterActor *child;
   ClutterActorIter iter;
@@ -613,7 +641,7 @@ do_sync_geometry (MetaWindowActorWayland *self)
                                         &background_width, &background_height))
     {
       MtkRectangle actor_rect;
-      int geometry_scale;
+      float geometry_scale;
       int child_actor_width, child_actor_height;
 
       if (!self->background)
@@ -675,6 +703,9 @@ meta_window_actor_wayland_map (ClutterActor *actor)
 static void
 meta_window_actor_wayland_dispose (GObject *object)
 {
+  MetaWindowActor *window_actor = META_WINDOW_ACTOR (object);
+  MetaSurfaceActor *surface_actor =
+    meta_window_actor_get_surface (window_actor);
   MetaWindowActorWayland *self = META_WINDOW_ACTOR_WAYLAND (object);
   MetaWindow *window = meta_window_actor_get_meta_window (META_WINDOW_ACTOR (self));
   GObjectClass *parent_class =
@@ -682,6 +713,8 @@ meta_window_actor_wayland_dispose (GObject *object)
 
   g_clear_signal_handler (&self->highest_scale_monitor_handler_id,
                           window);
+
+  g_clear_signal_handler (&self->size_changed_id, surface_actor);
 
   parent_class->dispose (object);
 }

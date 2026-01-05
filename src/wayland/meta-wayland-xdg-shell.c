@@ -40,6 +40,7 @@
 #include "wayland/meta-wayland-window-configuration.h"
 #include "wayland/meta-wayland.h"
 #include "wayland/meta-window-wayland.h"
+#include "wayland/meta-wayland-fractional-scale.h"
 
 #include "xdg-shell-server-protocol.h"
 
@@ -287,6 +288,13 @@ xdg_toplevel_set_app_id (struct wl_client   *client,
     app_id = "";
 
   meta_window_set_wm_class (window, app_id, app_id);
+
+  double scale = 0;
+  meta_prefs_maybe_fill_wayland_scale_factor(app_id, &scale);
+  if (scale) {
+    meta_wayland_fractional_scale_maybe_send_preferred_scale (surface, scale);
+    meta_window_wayland_set_geometry_scale_for_window (META_WINDOW_WAYLAND (window), scale);
+  }
 }
 
 static void
@@ -300,7 +308,7 @@ xdg_toplevel_show_window_menu (struct wl_client   *client,
   MetaWaylandSeat *seat = wl_resource_get_user_data (seat_resource);
   MetaWaylandSurface *surface = surface_from_xdg_toplevel_resource (resource);
   MetaWindow *window;
-  int monitor_scale;
+  float monitor_scale;
 
   window = meta_wayland_surface_get_window (surface);
   if (!window)
@@ -882,9 +890,9 @@ meta_wayland_xdg_toplevel_send_configure (MetaWaylandXdgToplevel         *xdg_to
       configuration->bounds_height > 0)
     {
       xdg_toplevel_send_configure_bounds (xdg_toplevel->resource,
-                                          (configuration->bounds_width /
+                                          roundf (configuration->bounds_width /
                                            configuration->scale),
-                                          (configuration->bounds_height /
+                                          roundf (configuration->bounds_height /
                                            configuration->scale));
     }
 
@@ -908,8 +916,8 @@ meta_wayland_xdg_toplevel_send_configure (MetaWaylandXdgToplevel         *xdg_to
     }
 
   xdg_toplevel_send_configure (xdg_toplevel->resource,
-                               configuration->width / configuration->scale,
-                               configuration->height / configuration->scale,
+                               roundf (configuration->width / configuration->scale),
+                               roundf (configuration->height / configuration->scale),
                                &states);
   wl_array_release (&states);
 
@@ -1247,18 +1255,18 @@ scale_placement_rule (MetaPlacementRule  *placement_rule,
                       MetaWaylandSurface *surface)
 {
   MetaWindow *window = meta_wayland_surface_get_window (surface);
-  int geometry_scale;
+  float geometry_scale;
 
   geometry_scale = meta_window_wayland_get_geometry_scale (window);
 
-  placement_rule->anchor_rect.x *= geometry_scale;
-  placement_rule->anchor_rect.y *= geometry_scale;
-  placement_rule->anchor_rect.width *= geometry_scale;
-  placement_rule->anchor_rect.height *= geometry_scale;
-  placement_rule->offset_x *= geometry_scale;
-  placement_rule->offset_y *= geometry_scale;
-  placement_rule->width *= geometry_scale;
-  placement_rule->height *= geometry_scale;
+  placement_rule->anchor_rect.x = roundf (placement_rule->anchor_rect.x * geometry_scale);
+  placement_rule->anchor_rect.y = roundf (placement_rule->anchor_rect.y * geometry_scale);
+  placement_rule->anchor_rect.width = roundf (placement_rule->anchor_rect.width * geometry_scale);
+  placement_rule->anchor_rect.height = roundf (placement_rule->anchor_rect.height * geometry_scale);
+  placement_rule->offset_x = roundf (placement_rule->offset_x * geometry_scale);
+  placement_rule->offset_y = roundf (placement_rule->offset_y * geometry_scale);
+  placement_rule->width = roundf (placement_rule->width * geometry_scale);
+  placement_rule->height = roundf (placement_rule->height * geometry_scale);
 }
 
 static void
@@ -1552,7 +1560,7 @@ meta_wayland_xdg_popup_post_apply_state (MetaWaylandSurfaceRole  *surface_role,
   if (!mtk_rectangle_overlap (&buffer_rect, &parent_buffer_rect) &&
       !mtk_rectangle_is_adjacent_to (&buffer_rect, &parent_buffer_rect))
     {
-      g_warning ("Buggy client caused popup to be placed outside of "
+      g_print ("Buggy client caused popup to be placed outside of "
                  "parent window");
       dismiss_invalid_popup (xdg_popup);
     }
@@ -1591,7 +1599,7 @@ meta_wayland_xdg_popup_configure (MetaWaylandShellSurface        *shell_surface,
   MetaWaylandXdgSurface *xdg_surface = META_WAYLAND_XDG_SURFACE (xdg_popup);
   MetaWindow *parent_window =
     meta_wayland_surface_get_window (xdg_popup->parent_surface);
-  int geometry_scale;
+  float geometry_scale;
   int x, y;
 
   if (!xdg_popup->resource)
@@ -1627,8 +1635,8 @@ meta_wayland_xdg_popup_configure (MetaWaylandShellSurface        *shell_surface,
     }
 
   geometry_scale = meta_window_wayland_get_geometry_scale (parent_window);
-  x = configuration->rel_x / geometry_scale;
-  y = configuration->rel_y / geometry_scale;
+  x = roundf (configuration->rel_x / geometry_scale);
+  y = roundf (configuration->rel_y / geometry_scale);
   if (xdg_popup->pending_repositioned)
     {
       xdg_popup_send_repositioned (xdg_popup->resource,

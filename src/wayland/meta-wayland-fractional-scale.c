@@ -76,10 +76,12 @@ wp_fractional_scale_manager_get_fractional_scale (struct wl_client   *client,
                                                   struct wl_resource *surface_resource)
 {
   MetaWaylandSurface *surface;
+  MetaWindow *window;
   struct wl_resource *fractional_scale_resource;
   MetaLogicalMonitor *logical_monitor;
 
   surface = wl_resource_get_user_data (surface_resource);
+  window = meta_wayland_surface_get_window(surface);
   if (surface->fractional_scale.resource)
     {
       wl_resource_post_error (resource,
@@ -109,7 +111,8 @@ wp_fractional_scale_manager_get_fractional_scale (struct wl_client   *client,
     {
       double scale;
 
-      scale = meta_logical_monitor_get_scale (logical_monitor);
+      scale = meta_logical_monitor_get_wayland_scale(logical_monitor, window ? window->res_name : NULL);
+      scale = scale ? scale : meta_logical_monitor_get_scale (logical_monitor);
       meta_wayland_fractional_scale_maybe_send_preferred_scale (surface, scale);
     }
 }

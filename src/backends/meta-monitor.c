@@ -77,6 +77,7 @@ typedef struct _MetaMonitorPrivate
   MetaLogicalMonitor *logical_monitor;
 
   char *display_name;
+  char *unique_name;
 
   gboolean is_for_lease;
 
@@ -700,6 +701,7 @@ meta_monitor_finalize (GObject *object)
   g_list_free_full (priv->modes, g_object_unref);
   meta_monitor_spec_free (priv->spec);
   g_free (priv->display_name);
+  g_free (priv->unique_name);
 
   G_OBJECT_CLASS (meta_monitor_parent_class)->finalize (object);
 }
@@ -1009,6 +1011,10 @@ meta_monitor_normal_new (MetaMonitorManager *monitor_manager,
 
   meta_monitor_generate_spec (monitor);
   monitor_priv->display_name = meta_monitor_make_display_name (monitor);
+  monitor_priv->unique_name = g_strdup_printf ("%s_%s_%s",
+                        meta_monitor_get_vendor (monitor), 
+                        meta_monitor_get_product(monitor), 
+                        meta_monitor_get_serial (monitor));
 
   return monitor_normal;
 }
@@ -1884,6 +1890,10 @@ meta_monitor_tiled_new (MetaMonitorManager  *monitor_manager,
 
   meta_monitor_generate_spec (monitor);
   monitor_priv->display_name = meta_monitor_make_display_name (monitor);
+  monitor_priv->unique_name = g_strdup_printf ("%s_%s_%s",
+                        meta_monitor_get_vendor (monitor), 
+                        meta_monitor_get_product(monitor), 
+                        meta_monitor_get_serial (monitor));
   meta_monitor_manager_tiled_monitor_added (monitor_manager,
                                             META_MONITOR (monitor_tiled));
 
@@ -2699,6 +2709,26 @@ meta_monitor_get_display_name (MetaMonitor *monitor)
   monitor_priv = meta_monitor_get_instance_private (monitor);
 
   return monitor_priv->display_name;
+}
+
+/**
+ * meta_monitor_get_unique_name:
+ * @monitor: A #MetaMonitor object
+ *
+ * Get the unique name of the monitor.
+ *
+ * Returns: The unique name of the monitor.
+ */
+const char *
+meta_monitor_get_unique_name (MetaMonitor *monitor)
+{
+  MetaMonitorPrivate *monitor_priv;
+
+  g_return_val_if_fail (META_IS_MONITOR (monitor), NULL);
+
+  monitor_priv = meta_monitor_get_instance_private (monitor);
+
+  return monitor_priv->unique_name;
 }
 
 void

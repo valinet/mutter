@@ -103,6 +103,8 @@ typedef enum
   META_PREF_DRAG_THRESHOLD,
   META_PREF_LOCATE_POINTER,
   META_PREF_CHECK_ALIVE_TIMEOUT,
+  
+  META_PREF_WAYLAND_SCALE_FACTOR,
 } MetaPreference;
 
 typedef void (* MetaPrefsChangedFunc) (MetaPreference pref,
@@ -225,6 +227,13 @@ int      meta_prefs_get_draggable_border_width (void);
 
 META_EXPORT
 int      meta_prefs_get_drag_threshold (void);
+
+META_EXPORT
+double   meta_prefs_get_wayland_scale_factor();
+
+META_EXPORT
+void     meta_prefs_maybe_fill_wayland_scale_factor (const char *name, 
+                                                     double     *scale);
 
 /**
  * MetaKeyBindingAction:

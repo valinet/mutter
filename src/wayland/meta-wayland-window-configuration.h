@@ -47,7 +47,7 @@ struct _MetaWaylandWindowConfiguration
   int width;
   int height;
 
-  int scale;
+  float scale;
   MetaGravity gravity;
   MetaMoveResizeFlags flags;
 
@@ -62,7 +62,7 @@ MetaWaylandWindowConfiguration * meta_wayland_window_configuration_new (MetaWind
                                                                         MtkRectangle         rect,
                                                                         int                  max_width,
                                                                         int                  max_height,
-                                                                        int                  scale,
+                                                                        float                  scale,
                                                                         MetaMoveResizeFlags  flags,
                                                                         MetaGravity          gravity);
 
@@ -71,11 +71,11 @@ MetaWaylandWindowConfiguration * meta_wayland_window_configuration_new_relative 
                                                                                  int         rel_y,
                                                                                  int         width,
                                                                                  int         height,
-                                                                                 int         scale);
+                                                                                 float         scale);
 
 MetaWaylandWindowConfiguration * meta_wayland_window_configuration_new_empty (int bounds_width,
                                                                               int bounds_height,
-                                                                              int scale);
+                                                                              float scale);
 
 MetaWaylandWindowConfiguration * meta_wayland_window_configuration_new_from_other (MetaWaylandWindowConfiguration *other);
 

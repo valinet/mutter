@@ -130,6 +130,8 @@ struct _MetaShapedTexture
 
   MetaMultiTextureAlphaMode premult;
   MetaMultiTextureCoefficients coeffs;
+
+  float geometry_scale;
 };
 
 G_DEFINE_TYPE_WITH_CODE (MetaShapedTexture, meta_shaped_texture, G_TYPE_OBJECT,
@@ -241,6 +243,7 @@ meta_shaped_texture_init (MetaShapedTexture *stex)
   stex->transform = MTK_MONITOR_TRANSFORM_NORMAL;
   stex->coeffs = META_MULTI_TEXTURE_COEFFICIENTS_NONE;
   stex->premult = META_MULTI_TEXTURE_ALPHA_MODE_NONE;
+  stex->geometry_scale = 0;
 }
 
 static void
@@ -882,10 +885,13 @@ do_paint_content (MetaShapedTexture   *stex,
   if (mtk_monitor_transform_is_rotated (stex->transform))
     flip_ints (&sample_width, &sample_height);
 
-  if (meta_actor_painting_untransformed (framebuffer,
+  gboolean cond = meta_actor_painting_untransformed (framebuffer,
                                          dst_width, dst_height,
                                          sample_width, sample_height,
-                                         &transforms))
+                                         &transforms);
+  gboolean cond_w = (fmod(stex->geometry_scale, 1) != 0 && (int)(dst_width * stex->geometry_scale) == sample_width - 1 && fabs(transforms.x_scale - 1.0) < 1e-3);
+  gboolean cond_h = (fmod(stex->geometry_scale, 1) != 0 && (int)(dst_height * stex->geometry_scale) == sample_height - 1 && fabs(transforms.y_scale - 1.0) < 1e-3);                           
+  if (cond_w || cond_h || cond)
     {
       min_filter = COGL_PIPELINE_FILTER_NEAREST;
       mag_filter = COGL_PIPELINE_FILTER_NEAREST;
@@ -1866,4 +1872,16 @@ meta_shaped_texture_set_color_repr (MetaShapedTexture            *stex,
 
   meta_texture_mipmap_set_coeffs (stex->texture_mipmap, coeffs);
   meta_shaped_texture_reset_pipelines (stex);
+}
+
+/**
+ * meta_shaped_texture_set_geometry_scale:
+ * @stex: A #MetaShapedTexture
+ */
+void
+meta_shaped_texture_set_geometry_scale (MetaShapedTexture *stex, float geometry_scale)
+{
+  g_return_if_fail (META_IS_SHAPED_TEXTURE (stex));
+
+  stex->geometry_scale = geometry_scale;
 }

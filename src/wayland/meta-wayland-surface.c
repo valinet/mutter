@@ -2674,6 +2674,7 @@ committed_state_handle_preferred_scale_monitor (MetaWaylandSurface *surface)
 {
   MetaWaylandSurface *subsurface_surface;
   MetaLogicalMonitor *logical_monitor;
+  MetaWindow *window = meta_wayland_surface_get_window(surface);
   double scale;
 
   /* Nothing to do if the client already destroyed the wl_surface */
@@ -2684,7 +2685,8 @@ committed_state_handle_preferred_scale_monitor (MetaWaylandSurface *surface)
   if (!logical_monitor)
     return;
 
-  scale = meta_logical_monitor_get_scale (logical_monitor);
+  scale = meta_logical_monitor_get_wayland_scale(logical_monitor, window ? window->res_name : NULL);
+  scale = scale ? scale : meta_logical_monitor_get_scale (logical_monitor);
   meta_wayland_fractional_scale_maybe_send_preferred_scale (surface, scale);
 
   if (wl_resource_get_version (surface->resource) >=

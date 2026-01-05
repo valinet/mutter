@@ -230,6 +230,25 @@ meta_logical_monitor_get_scale (MetaLogicalMonitor *logical_monitor)
   return logical_monitor->scale;
 }
 
+double
+meta_logical_monitor_get_wayland_scale(MetaLogicalMonitor *logical_monitor, 
+                                       const char         *res_name)
+{
+  double scale = meta_prefs_get_wayland_scale_factor();
+  GList *monitors = meta_logical_monitor_get_monitors (logical_monitor);
+  if (monitors) {
+    MetaMonitor *monitor = monitors->data;
+    if (monitor) {
+      meta_prefs_maybe_fill_wayland_scale_factor(meta_monitor_get_connector (monitor), &scale);
+      meta_prefs_maybe_fill_wayland_scale_factor(meta_monitor_get_unique_name (monitor), &scale);
+    }
+  }
+  if (res_name) {
+    meta_prefs_maybe_fill_wayland_scale_factor(res_name, &scale);
+  }
+  return scale;
+}
+
 MtkMonitorTransform
 meta_logical_monitor_get_transform (MetaLogicalMonitor *logical_monitor)
 {

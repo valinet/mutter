@@ -30,6 +30,9 @@ META_EXPORT
 const char * meta_monitor_get_display_name (MetaMonitor *monitor);
 
 META_EXPORT
+const char* meta_monitor_get_unique_name (MetaMonitor *monitor);
+
+META_EXPORT
 const char * meta_monitor_get_connector (MetaMonitor *monitor);
 
 META_EXPORT

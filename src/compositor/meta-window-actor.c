@@ -59,7 +59,7 @@ typedef struct _MetaWindowActorPrivate
 
   GPtrArray *surface_actors;
 
-  int geometry_scale;
+  float geometry_scale;
 
   int n_mapped_clones;
   int n_obscured_surfaces;
@@ -1301,16 +1301,18 @@ meta_window_actor_from_window (MetaWindow *window)
 
 void
 meta_window_actor_set_geometry_scale (MetaWindowActor *window_actor,
-                                      int              geometry_scale)
+                                      float              geometry_scale)
 {
   MetaWindowActorPrivate *priv =
     meta_window_actor_get_instance_private (window_actor);
   graphene_matrix_t child_transform;
+  MetaShapedTexture *stex = meta_window_actor_get_texture (window_actor);
 
   if (priv->geometry_scale == geometry_scale)
     return;
 
   priv->geometry_scale = geometry_scale;
+  meta_shaped_texture_set_geometry_scale(stex, geometry_scale);
 
   graphene_matrix_init_scale (&child_transform,
                               geometry_scale,
@@ -1320,7 +1322,7 @@ meta_window_actor_set_geometry_scale (MetaWindowActor *window_actor,
                                      &child_transform);
 }
 
-int
+float
 meta_window_actor_get_geometry_scale (MetaWindowActor *window_actor)
 {
   MetaWindowActorPrivate *priv =
@@ -1755,7 +1757,7 @@ meta_window_actor_get_image (MetaWindowActor *self,
 
       if (clip)
         {
-          int geometry_scale;
+          float geometry_scale;
 
           geometry_scale =
             meta_window_actor_get_geometry_scale (self);

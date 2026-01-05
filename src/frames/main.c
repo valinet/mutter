@@ -84,6 +84,37 @@ meta_frames_client_should_monitor_color_scheme (void)
   return should_monitor_color_scheme;
 }
 
+static void
+load_compact_header_css (void)
+{
+  GtkCssProvider *provider;
+  GdkDisplay *display;
+  char css[512];
+  float scale = 0;
+  const char* str_scale = g_getenv("WAYLAND_SCALE_FACTOR");
+  if (str_scale)
+    scale = atof(str_scale);
+  if (!scale) scale = 1;
+  g_snprintf (css, sizeof css,
+    ".titlebar.compact-header, .titlebar.compact-header *, .titlebar.compact-header box, .titlebar.compact-header windowcontrols, .titlebar.compact-header label, .titlebar.compact-header title { min-height: 0px; min-width: 0px; }\n"
+    ".titlebar.compact-header windowcontrols button { padding-top: 0px; padding-bottom: 0px; }\n"
+    ".titlebar.compact-header windowcontrols button image { -gtk-icon-size: %dpx; }\n"
+    ".titlebar.compact-header label { font-size: %fem; }\n", (int)(10 * scale), (10 * scale) / 18.0f);
+
+  provider = gtk_css_provider_new ();
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+  gtk_css_provider_load_from_data (provider, css, -1);
+  G_GNUC_END_IGNORE_DEPRECATIONS
+
+  display = gdk_display_get_default ();
+  gtk_style_context_add_provider_for_display (
+      display,
+      GTK_STYLE_PROVIDER (provider),
+      GTK_STYLE_PROVIDER_PRIORITY_THEME + 1);
+
+  g_object_unref (provider);
+}
+
 int
 main (int   argc,
       char *argv[])
@@ -105,6 +136,7 @@ main (int   argc,
   g_set_prgname ("mutter-x11-frames");
 
   gtk_init ();
+  load_compact_header_css ();
 
   display = gdk_display_get_default ();
 

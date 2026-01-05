@@ -96,9 +96,9 @@ META_EXPORT_TEST
 MetaWindowActor *meta_window_actor_from_actor (ClutterActor *actor);
 
 void meta_window_actor_set_geometry_scale (MetaWindowActor *window_actor,
-                                           int              geometry_scale);
+                                           float              geometry_scale);
 
-int meta_window_actor_get_geometry_scale (MetaWindowActor *window_actor);
+float meta_window_actor_get_geometry_scale (MetaWindowActor *window_actor);
 
 gboolean meta_window_actor_is_streaming (MetaWindowActor *window_actor);
 

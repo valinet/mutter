@@ -117,6 +117,8 @@ static gboolean show_fallback_app_menu = TRUE;
 static GDesktopVisualBellType visual_bell_type = G_DESKTOP_VISUAL_BELL_FULLSCREEN_FLASH;
 static MetaButtonLayout button_layout;
 
+static JsonNode *wayland_scale_factor = NULL;
+
 /* NULL-terminated array */
 static char **workspace_names = NULL;
 
@@ -146,6 +148,7 @@ static gboolean mouse_button_mods_handler (GVariant*, gpointer*, gpointer);
 static gboolean button_layout_handler (GVariant*, gpointer*, gpointer);
 static gboolean overlay_key_handler (GVariant*, gpointer*, gpointer);
 static gboolean locate_pointer_key_handler (GVariant*, gpointer*, gpointer);
+static gboolean wayland_scale_factor_handler (GVariant*, gpointer*, gpointer);
 
 static gboolean iso_next_group_handler (GVariant*, gpointer*, gpointer);
 
@@ -433,6 +436,15 @@ static MetaStringPreference preferences_string[] =
         META_PREF_KEYBINDINGS,
       },
       locate_pointer_key_handler,
+      NULL,
+    },
+    {
+      {
+        "wayland-scale-factor",
+        SCHEMA_MUTTER,
+        META_PREF_WAYLAND_SCALE_FACTOR,
+      },
+      wayland_scale_factor_handler,
       NULL,
     },
     { { NULL, 0, 0 }, NULL },
@@ -1561,6 +1573,67 @@ locate_pointer_key_handler (GVariant *value,
 }
 
 static gboolean
+wayland_scale_factor_handler (GVariant *value,
+                           gpointer *result,
+                           gpointer  data)
+{
+  JsonNode *json;
+  JsonObject *obj;
+  JsonArray *arr;
+  JsonNode *element;
+  JsonObject *apps_obj;
+  GList *app_names;
+
+  const char *string_value;
+  GError *error = NULL;
+
+  *result = NULL;
+  string_value = g_variant_get_string(value, NULL);
+  json = json_from_string(string_value, &error);
+
+  if (error)
+  {
+    meta_topic(META_DEBUG_PREFS, "Failed to parse value for wayland-scale-factor: %s", error->message);
+    g_error_free(error);
+    return FALSE;
+  }
+
+  if (!JSON_NODE_HOLDS_OBJECT(json))
+    goto failed;
+
+  obj = json_node_get_object(json);
+  arr = json_object_get_array_member(obj, "global");
+  if (!arr || json_array_get_length(arr) != 1)
+    goto failed;
+  
+  if (!(element = json_object_get_member(obj, "rules")))
+    goto failed;
+  if (!JSON_NODE_HOLDS_OBJECT(element))
+    goto failed;
+  apps_obj = json_node_get_object(element);
+
+  app_names = json_object_get_members(apps_obj);
+  for (GList *l = app_names; l != NULL; l = l->next)
+  {
+    arr = json_object_get_array_member(apps_obj, l->data);
+    if (!arr || json_array_get_length(arr) != 1)
+      goto failed;
+  }
+
+  if (wayland_scale_factor != NULL)
+    json_node_unref(wayland_scale_factor);
+  wayland_scale_factor = json;
+  queue_changed(META_PREF_WAYLAND_SCALE_FACTOR);
+
+  return TRUE;
+
+failed:
+  meta_topic(META_DEBUG_PREFS, "Failed to parse value for wayland-scale-factor");
+  json_node_unref(json);
+  return FALSE;
+}
+
+static gboolean
 iso_next_group_handler (GVariant *value,
                         gpointer *result,
                         gpointer  data)
@@ -1719,6 +1792,9 @@ meta_preference_to_string (MetaPreference pref)
 
     case META_PREF_CHECK_ALIVE_TIMEOUT:
       return "CHECK_ALIVE_TIMEOUT";
+
+    case META_PREF_WAYLAND_SCALE_FACTOR:
+      return "WAYLAND_SCALE_FACTOR";
     }
 
   return "(unknown)";
@@ -2206,4 +2282,37 @@ void
 meta_prefs_set_force_fullscreen (gboolean whether)
 {
   force_fullscreen = whether;
+}
+
+double
+meta_prefs_get_wayland_scale_factor()
+{
+  JsonObject *obj;
+  JsonArray *arr;
+
+  if (!wayland_scale_factor)
+    return 0;
+
+  obj = json_node_get_object(wayland_scale_factor);
+  arr = json_object_get_array_member(obj, "global");
+  return json_array_get_double_element(arr, 0);
+}
+
+void
+meta_prefs_maybe_fill_wayland_scale_factor (const char *name,
+                                            double     *scale)
+{
+  JsonObject *obj;
+  JsonArray *arr;
+
+  if (!wayland_scale_factor || !name)
+    return;
+
+  obj = json_node_get_object(wayland_scale_factor);
+  obj = json_object_get_object_member(obj, "rules");
+
+  if (json_object_has_member(obj, name)) {
+    arr = json_object_get_array_member(obj, name);
+    *scale = json_array_get_double_element(arr, 0);
+  }
 }

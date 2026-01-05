@@ -66,7 +66,7 @@ struct _MetaWindowWayland
 {
   MetaWindow parent;
 
-  int geometry_scale;
+  float geometry_scale;
 
   MetaWaylandClient *client;
   MetaWaylandSurface *surface;
@@ -94,9 +94,9 @@ static GQuark unmaximize_drag_quark;
 static gboolean meta_window_wayland_get_oldest_pending_serial (MetaWindowWayland *wl_window,
                                                                uint32_t          *serial);
 
-static void
-set_geometry_scale_for_window (MetaWindowWayland *wl_window,
-                               int                geometry_scale)
+void
+meta_window_wayland_set_geometry_scale_for_window (MetaWindowWayland *wl_window,
+                                                   float              geometry_scale)
 {
   MetaWindowActor *window_actor;
 
@@ -107,17 +107,20 @@ set_geometry_scale_for_window (MetaWindowWayland *wl_window,
     meta_window_actor_set_geometry_scale (window_actor, geometry_scale);
 }
 
-static int
-get_window_geometry_scale_for_logical_monitor (MetaLogicalMonitor *logical_monitor)
+static float
+get_window_geometry_scale_for_logical_monitor (MetaWindow *window)
 {
+  MetaLogicalMonitor *logical_monitor = window->monitor;
   MetaMonitorManager *monitor_manager =
     meta_logical_monitor_get_monitor_manager (logical_monitor);
   MetaBackend *backend = meta_monitor_manager_get_backend (monitor_manager);
 
   if (meta_backend_is_stage_views_scaled (backend))
     return 1;
-  else
-    return (int) meta_logical_monitor_get_scale (logical_monitor);
+  else {
+    double scale = meta_logical_monitor_get_wayland_scale(logical_monitor, window ? window->res_name : NULL);
+    return scale ? scale : meta_logical_monitor_get_scale (logical_monitor);
+  }
 }
 
 static void
@@ -402,7 +405,7 @@ meta_window_wayland_move_resize_internal (MetaWindow                *window,
   MtkRectangle configured_rect;
   MtkRectangle frame_rect;
   MetaGravity gravity;
-  int geometry_scale;
+  float geometry_scale;
   int new_x;
   int new_y;
   int new_buffer_x;
@@ -778,8 +781,8 @@ meta_window_wayland_main_monitor_changed (MetaWindow               *window,
                                           const MetaLogicalMonitor *old)
 {
   MetaWindowWayland *wl_window = META_WINDOW_WAYLAND (window);
-  int old_geometry_scale = wl_window->geometry_scale;
-  int geometry_scale;
+  float old_geometry_scale = wl_window->geometry_scale;
+  float geometry_scale;
   float scale_factor;
   MetaWaylandSurface *surface;
   MtkRectangle frame_rect;
@@ -844,7 +847,7 @@ meta_window_wayland_main_monitor_changed (MetaWindow               *window,
       meta_wayland_actor_surface_sync_actor_state (actor_surface);
     }
 
-  set_geometry_scale_for_window (wl_window, geometry_scale);
+  meta_window_wayland_set_geometry_scale_for_window (wl_window, geometry_scale);
   meta_window_emit_size_changed (window);
 }
 
@@ -1310,7 +1313,7 @@ meta_window_wayland_new (MetaDisplay        *display,
                            "client", meta_wayland_surface_get_client (surface),
                            NULL);
   wl_window = META_WINDOW_WAYLAND (window);
-  set_geometry_scale_for_window (wl_window, wl_window->geometry_scale);
+  meta_window_wayland_set_geometry_scale_for_window (wl_window, wl_window->geometry_scale);
   meta_window_wayland_maybe_apply_custom_tag (window);
 
   return window;
@@ -1461,13 +1464,13 @@ meta_window_wayland_is_resize (MetaWindowWayland *wl_window,
          old_height != height;
 }
 
-int
+float
 meta_window_wayland_get_geometry_scale (MetaWindow *window)
 {
   if (!window->monitor)
     return 1;
 
-  return get_window_geometry_scale_for_logical_monitor (window->monitor);
+  return get_window_geometry_scale_for_logical_monitor (window);
 }
 
 static gboolean
@@ -1545,7 +1548,7 @@ meta_window_wayland_finish_move_resize (MetaWindow              *window,
   MetaDisplay *display = window->display;
   MetaWaylandSurface *surface = wl_window->surface;
   int dx, dy;
-  int geometry_scale;
+  float geometry_scale;
   MtkRectangle rect;
   MetaMoveResizeFlags flags;
   MetaWaylandWindowConfiguration *acked_configuration;
@@ -1622,8 +1625,8 @@ meta_window_wayland_finish_move_resize (MetaWindow              *window,
       (new_geom.width > acked_configuration->width ||
        new_geom.height > acked_configuration->height))
     {
-      g_warning ("Window %s (wl_surface#%u) size %dx%d exceeds "
-                 "allowed maximum size %dx%d",
+      g_warning ("Window %s (wl_surface#%u) size %fx%f exceeds "
+                 "allowed maximum size %fx%f",
                  window->desc,
                  surface->resource
                    ? wl_resource_get_id (surface->resource)

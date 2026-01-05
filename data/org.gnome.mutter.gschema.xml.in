@@ -11,6 +11,44 @@
   <schema id="org.gnome.mutter" path="/org/gnome/mutter/"
           gettext-domain="@GETTEXT_DOMAIN@">
 
+    <key name="wayland-scale-factor" type="s">
+      <default>"{\"global\": [0], \"rules\": {}}"</default>
+      <summary>wayland windows will use this scaling factor</summary>
+      <description>
+        Allows specifing a global scaling factor for Wayland windows.
+        This can be further customized for individual monitors, windows, or
+        display connectors.
+
+        This is an example:
+
+          {
+            'global': [1.5],
+            'rules': {
+              'AOC_U3277WB_0x00000014': [1],
+              'code': [2],
+              'DP-1': [1.75]
+            }
+          }
+
+        Above sets a scale factor of 1.5 for all Wayland windows, except:
+
+        * windows on monitor with connector "DP-1" get scaled to 1.75x
+
+        * windows on monitor identified by triplet "AOC_U3277WB_0x00000014"
+        (vendor, product name, and serial) get scaled to 1x
+
+        * windows which have class name equal to "code" get scaled to 2x
+
+        Order in which the scale is gathered is the above. Thus, a window
+        with class name "code" on monitor "DP-1" will get scaled to 2x. The
+        last matched rule is used as the only and final scale.
+
+        To compose a monitor triplet, gather information about monitors using:
+        
+        dbus-send --session --print-reply --dest=org.gnome.Mutter.DisplayConfig /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig.GetCurrentState
+      </description>
+    </key>
+
     <key name="overlay-key" type="s">
       <default>'Super'</default>
       <summary>Modifier to use for extended window management operations</summary>

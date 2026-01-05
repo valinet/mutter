@@ -75,6 +75,10 @@ void meta_logical_monitor_make_primary (MetaLogicalMonitor *logical_monitor);
 META_EXPORT_TEST
 float meta_logical_monitor_get_scale (MetaLogicalMonitor *logical_monitor);
 
+META_EXPORT
+double meta_logical_monitor_get_wayland_scale(MetaLogicalMonitor *logical_monitor, 
+                                              const char         *res_name);
+
 MtkMonitorTransform meta_logical_monitor_get_transform (MetaLogicalMonitor *logical_monitor);
 
 META_EXPORT_TEST
