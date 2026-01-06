@@ -2834,6 +2834,7 @@ meta_window_maximize_internal (MetaWindow        *window,
   was_maximized_vertically =
     meta_window_config_is_maximized_vertically (window->config);
 
+/*    
   if (saved_rect != NULL)
     window->saved_rect = *saved_rect;
   else
@@ -2841,6 +2842,15 @@ meta_window_maximize_internal (MetaWindow        *window,
 
   if (maximize_horizontally && maximize_vertically)
     window->saved_maximize = TRUE;
+*/
+  if (maximize_horizontally && maximize_vertically &&
+    meta_window_config_get_tile_mode(window->config) == META_TILE_NONE) {
+    if (saved_rect != NULL)
+      window->saved_rect = *saved_rect;
+    else
+      meta_window_save_rect (window);
+    window->saved_maximize = TRUE;
+  }
 
   meta_window_config_set_maximized_directions (
     window->config,
