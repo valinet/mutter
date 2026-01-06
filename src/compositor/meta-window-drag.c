@@ -2129,3 +2129,9 @@ meta_window_drag_destroy (MetaWindowDrag *window_drag)
   g_object_run_dispose (G_OBJECT (window_drag));
   g_object_unref (window_drag);
 }
+
+MetaWindow *
+meta_window_drag_get_origin_window (MetaWindowDrag *window_drag)
+{
+  return window_drag->window;
+}

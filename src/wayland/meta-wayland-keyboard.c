@@ -55,6 +55,8 @@
 #include "core/display-private.h"
 #include "mtk/mtk.h"
 #include "wayland/meta-wayland-private.h"
+#include "compositor/compositor-private.h"
+#include "compositor/meta-window-drag.h"
 
 typedef struct
 {
@@ -714,9 +716,29 @@ meta_wayland_keyboard_set_focus (MetaWaylandKeyboard *keyboard,
                                  MetaWaylandSurface *surface)
 {
   MetaWaylandInputDevice *input_device = META_WAYLAND_INPUT_DEVICE (keyboard);
+  MetaWindow *old_window;
+  MetaWindowDrag *window_drag;
 
   if (keyboard->focus_surface == surface)
     return;
+
+  /* Don't send keyboard leave if we're just moving/resizing the focused window.
+   */
+  old_window = keyboard->focus_surface ? meta_wayland_surface_get_window (keyboard->focus_surface) : NULL;
+  if (old_window && !surface)
+    {
+      window_drag = meta_compositor_get_current_window_drag (old_window->display->compositor);
+      if (window_drag)
+        {
+          MetaWindow *drag_window = meta_window_drag_get_origin_window (window_drag);
+          if (drag_window == old_window)
+            {
+              //g_print("WL_KEYBOARD: Prevented leave on %s during drag\n",
+              //        old_window->res_name ? old_window->res_name : old_window->desc);
+              return;
+            }
+        }
+    }
 
   if (keyboard->focus_surface != NULL)
     {
