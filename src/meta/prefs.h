@@ -105,6 +105,8 @@ typedef enum
   META_PREF_CHECK_ALIVE_TIMEOUT,
   
   META_PREF_WAYLAND_SCALE_FACTOR,
+  META_PREF_DARK_LIST,
+  META_PREF_LIGHT_LIST,
 } MetaPreference;
 
 typedef void (* MetaPrefsChangedFunc) (MetaPreference pref,
@@ -234,6 +236,11 @@ double   meta_prefs_get_wayland_scale_factor();
 META_EXPORT
 void     meta_prefs_maybe_fill_wayland_scale_factor (const char *name, 
                                                      double     *scale);
+
+META_EXPORT
+gboolean meta_prefs_populate_dark_light_args(const char **arr, 
+                                             int          arr_size,
+                                             int          arr_start);
 
 /**
  * MetaKeyBindingAction:

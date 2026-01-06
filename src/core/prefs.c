@@ -118,6 +118,8 @@ static GDesktopVisualBellType visual_bell_type = G_DESKTOP_VISUAL_BELL_FULLSCREE
 static MetaButtonLayout button_layout;
 
 static JsonNode *wayland_scale_factor = NULL;
+static char **dark_list = NULL;
+static char **light_list = NULL;
 
 /* NULL-terminated array */
 static char **workspace_names = NULL;
@@ -467,6 +469,22 @@ static MetaStringArrayPreference preferences_string_array[] =
       },
       iso_next_group_handler,
       NULL,
+    },
+    {
+      { "dark-list",
+        SCHEMA_MUTTER,
+        META_PREF_DARK_LIST,
+      },
+      NULL,
+      &dark_list,
+    },
+    {
+      { "light-list",
+        SCHEMA_MUTTER,
+        META_PREF_LIGHT_LIST,
+      },
+      NULL,
+      &light_list,
     },
     { { NULL, 0, 0 }, NULL },
   };
@@ -1795,6 +1813,12 @@ meta_preference_to_string (MetaPreference pref)
 
     case META_PREF_WAYLAND_SCALE_FACTOR:
       return "WAYLAND_SCALE_FACTOR";
+
+    case META_PREF_DARK_LIST:
+      return "DARK_LIST";
+
+    case META_PREF_LIGHT_LIST:
+      return "LIGHT_LIST";
     }
 
   return "(unknown)";
@@ -2315,4 +2339,36 @@ meta_prefs_maybe_fill_wayland_scale_factor (const char *name,
     arr = json_object_get_array_member(obj, name);
     *scale = json_array_get_double_element(arr, 0);
   }
+}
+
+gboolean
+meta_prefs_populate_dark_light_args(const char **arr, int arr_size, int arr_idx) {
+  g_return_val_if_fail(dark_list, FALSE);
+  g_return_val_if_fail(light_list, FALSE);
+
+  int dark_len = g_strv_length(dark_list);
+  int light_len = g_strv_length(light_list);
+  for (int i = 0; i < light_len; i++)
+    for (int j = 0; j < dark_len; j++)
+      if (!g_strcmp0(dark_list[j], light_list[i]))
+        light_len--;
+  g_return_val_if_fail(dark_len + light_len + 1 < arr_size - arr_idx, FALSE);
+
+  for (int i = 0; i < dark_len; i++) {
+    arr[arr_idx++] = dark_list[i];
+  }
+  if (light_len) {
+    arr[arr_idx++] = ".";
+    for (int i = 0; i < light_len; i++) {
+      gboolean ok = TRUE;
+      for (int j = 0; j < dark_len; j++)
+        if (!g_strcmp0(dark_list[j], light_list[i]))
+          ok = FALSE;
+      if (ok)
+        arr[arr_idx++] = light_list[i];
+    }
+  }
+  arr[arr_idx++] = NULL;
+
+  return TRUE;
 }

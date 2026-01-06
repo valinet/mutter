@@ -27,6 +27,13 @@
 #include <gmodule.h>
 #include <X11/extensions/Xfixes.h>
 
+int color_mode = 0;
+char* monitored_apps[32];
+void *(*p_adw_style_manager_get_default)();
+void(*p_adw_style_manager_set_color_scheme)(void*, int);
+static pid_t dark_pid = 0;
+static pid_t light_pid = 0;
+
 static gboolean should_monitor_color_scheme = TRUE;
 
 typedef void (* InitFunc) (void);
@@ -66,6 +73,16 @@ load_libadwaita (void)
   if (!g_module_symbol (libadwaita, "adw_init", (gpointer *) &adw_init))
     return;
 
+  if (!g_module_symbol (libadwaita,
+                        "adw_style_manager_get_default",
+                        (gpointer *)&p_adw_style_manager_get_default))
+    return;
+
+  if (!g_module_symbol (libadwaita,
+                        "adw_style_manager_set_color_scheme",
+                        (gpointer *)&p_adw_style_manager_set_color_scheme))
+    return;
+
   should_monitor_color_scheme = FALSE;
   adw_init ();
 }
@@ -73,6 +90,15 @@ load_libadwaita (void)
 static gboolean
 on_sigterm (gpointer user_data)
 {
+  int status = 0;
+  if (dark_pid) {
+    kill (dark_pid, SIGTERM);
+    waitpid(dark_pid, &status, 0);
+  }
+  if (light_pid) {
+    kill (light_pid, SIGTERM);
+    waitpid(light_pid, &status, 0);
+  }
   exit (0);
 
   return G_SOURCE_REMOVE;
@@ -82,6 +108,14 @@ gboolean
 meta_frames_client_should_monitor_color_scheme (void)
 {
   return should_monitor_color_scheme;
+}
+
+float my_roundf(float x)
+{
+    if (x >= 0.0f)
+        return (float)((int)(x + 0.5f));
+    else
+        return (float)((int)(x - 0.5f));
 }
 
 static void
@@ -97,9 +131,11 @@ load_compact_header_css (void)
   if (!scale) scale = 1;
   g_snprintf (css, sizeof css,
     ".titlebar.compact-header, .titlebar.compact-header *, .titlebar.compact-header box, .titlebar.compact-header windowcontrols, .titlebar.compact-header label, .titlebar.compact-header title { min-height: 0px; min-width: 0px; }\n"
-    ".titlebar.compact-header windowcontrols button { padding-top: 0px; padding-bottom: 0px; }\n"
+    ".titlebar.compact-header windowcontrols button { padding-top: %dpx; padding-bottom: %dpx; padding-left: 0px; padding-right: %dpx; }\n"
     ".titlebar.compact-header windowcontrols button image { -gtk-icon-size: %dpx; }\n"
-    ".titlebar.compact-header label { font-size: %fem; }\n", (int)(10 * scale), (10 * scale) / 18.0f);
+    ".titlebar.compact-header label { font-size: %fem; }\n",
+    (int)my_roundf(scale), (int)my_roundf(scale), (int)(scale * 4),
+    (int)(8 * scale), (10 * scale) / 18.0f);
 
   provider = gtk_css_provider_new ();
   G_GNUC_BEGIN_IGNORE_DEPRECATIONS
@@ -119,6 +155,54 @@ int
 main (int   argc,
       char *argv[])
 {
+  if (argc > 1) {
+    dark_pid = fork();
+    if (!dark_pid) {
+      color_mode = 2;
+      for (int i = 1; i < argc; ++i) {
+        if (argv[i][0] == '.')
+          break;
+        monitored_apps[i - 1] = argv[i];
+      }
+    } else {
+      int needs_light = 0;
+      for (int i = 0; i < argc; ++i) {
+        if (argv[i][0] == '.')
+          needs_light = 1;
+      }
+      if (needs_light) {
+        light_pid = fork();
+        if (!light_pid) {
+          dark_pid = 0;
+          color_mode = 1;
+          int now = 0;
+          for (int i = 1; i < argc; ++i) {
+            if (now)
+              monitored_apps[now++ - 1] = argv[i];
+            if (argv[i][0] == '.')
+              now = 1;
+          }
+        } else {
+          int t = 0;
+          for (int i = 1; i < argc; ++i) {
+            if (argv[i][0] == '.')
+              t++;
+            else
+              monitored_apps[i - 1 - t] = argv[i];
+          }
+        }
+      } else {
+        int t = 0;
+        for (int i = 1; i < argc; ++i) {
+          if (argv[i][0] == '.')
+            t++;
+          else
+            monitored_apps[i - 1 - t] = argv[i];
+        }
+      }
+    }
+  }
+
   g_autoptr (MetaWindowTracker) window_tracker = NULL;
   GdkDisplay *display;
   GMainLoop *loop;
@@ -133,7 +217,9 @@ main (int   argc,
 
   gdk_set_allowed_backends ("x11");
 
-  g_set_prgname ("mutter-x11-frames");
+  if (color_mode == 1) g_set_prgname ("mutter-x11-frames_light");
+  else if (color_mode == 2) g_set_prgname ("mutter-x11-frames_dark");
+  else g_set_prgname ("mutter-x11-frames");
 
   gtk_init ();
   load_compact_header_css ();

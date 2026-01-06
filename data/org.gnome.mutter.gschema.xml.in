@@ -49,6 +49,24 @@
       </description>
     </key>
 
+    <key name="dark-list" type="as">
+      <default>[]</default>
+      <summary>x11 windows here will have dark title bar</summary>
+      <description>
+        The contents of the list represent the instance part of the window's
+        `WM_CLASS`, as same as the output of `xprop WM_CLASS|cut -d \" -f 2`
+      </description>
+    </key>
+
+    <key name="light-list" type="as">
+      <default>[]</default>
+      <summary>x11 windows here will have light title bar</summary>
+      <description>
+        The contents of the list represent the instance part of the window's
+        `WM_CLASS`, as same as the output of `xprop WM_CLASS|cut -d \" -f 2`
+      </description>
+    </key>
+
     <key name="overlay-key" type="s">
       <default>'Super'</default>
       <summary>Modifier to use for extended window management operations</summary>

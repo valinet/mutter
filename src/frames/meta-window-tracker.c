@@ -47,6 +47,11 @@ enum {
   N_PROPS
 };
 
+extern int color_mode;
+extern char* monitored_apps[32];
+extern void *(*p_adw_style_manager_get_default)();
+extern void(*p_adw_style_manager_set_color_scheme)(void*, int);
+
 static GParamSpec *props[N_PROPS] = { 0, };
 
 G_DEFINE_TYPE (MetaWindowTracker, meta_window_tracker, G_TYPE_OBJECT)
@@ -102,7 +107,7 @@ update_color_scheme (MetaWindowTracker *window_tracker)
   is_dark = color_scheme == G_DESKTOP_COLOR_SCHEME_PREFER_DARK;
 
   g_object_set (gtk_settings_get_default (),
-                "gtk-application-prefer-dark-theme", is_dark,
+                "gtk-application-prefer-dark-theme", color_mode ? (color_mode - 1) : is_dark,
                 NULL);
 }
 
@@ -114,12 +119,67 @@ on_color_scheme_changed_cb (GSettings         *interface_settings,
   update_color_scheme (window_tracker);
 }
 
+static int filter_window(GdkDisplay *display, Display *xdisplay, Window xwindow) {
+  gdk_x11_display_error_trap_push (display);
+  XClassHint class_hint;
+  if (XGetClassHint(xdisplay, xwindow, &class_hint)) {
+    char* name = class_hint.res_name;
+    if (!strncmp(name, "mutter-x11-frames", 17)) {
+      XFree(class_hint.res_name);
+      XFree(class_hint.res_class);
+      if (gdk_x11_display_error_trap_pop (display)) {
+        return 1;
+      }
+      return 1;
+    }
+    int i = 0;
+    while (monitored_apps[i]) {
+      if (!g_strcasecmp(name, monitored_apps[i])) {
+        if (!color_mode) {
+          XFree(class_hint.res_name);
+          XFree(class_hint.res_class);
+          if (gdk_x11_display_error_trap_pop (display)) {
+            return 1;
+          }
+          return 1;
+        }
+        i = -1;
+        break;
+      }
+      i++;
+    }
+    if (color_mode && i >= 0) {
+      XFree(class_hint.res_name);
+      XFree(class_hint.res_class);
+      if (gdk_x11_display_error_trap_pop (display)) {
+        return 1;
+      }
+      return 1;
+    }
+    XFree(class_hint.res_name);
+    XFree(class_hint.res_class);
+  } else {
+    if (color_mode) {
+      if (gdk_x11_display_error_trap_pop (display)) {
+        return 1;
+      }
+      return 1;
+    }
+  }
+  if (gdk_x11_display_error_trap_pop (display)) {
+    return 1;
+  }
+  return 0;
+}
+
 static void
 set_up_frame (MetaWindowTracker *window_tracker,
               Window             xwindow)
 {
   GdkDisplay *display = window_tracker->display;
-  Display *xdisplay;
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+  Display *xdisplay = gdk_x11_display_get_xdisplay (display);
+  G_GNUC_END_IGNORE_DEPRECATIONS
   GdkSurface *surface;
   Window xframe;
   unsigned long data[1];
@@ -128,6 +188,9 @@ set_up_frame (MetaWindowTracker *window_tracker,
   frame = g_hash_table_lookup (window_tracker->client_windows,
                                GUINT_TO_POINTER (xwindow));
   if (frame)
+    return;
+
+  if (filter_window(display, xdisplay, xwindow))
     return;
 
   /* Double check it's not a request for a frame of our own. */
@@ -142,7 +205,6 @@ set_up_frame (MetaWindowTracker *window_tracker,
   surface = gtk_native_get_surface (GTK_NATIVE (frame));
   xframe = gdk_x11_surface_get_xid (surface);
 
-  xdisplay = gdk_x11_display_get_xdisplay (display);
   gdk_x11_display_error_trap_push (display);
 
   XAddToSaveSet (xdisplay, xwindow);
@@ -185,6 +247,7 @@ listen_set_up_frame (MetaWindowTracker *window_tracker,
   G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 
   xdisplay = gdk_x11_display_get_xdisplay (display);
+  if (filter_window(display, xdisplay, xwindow)) return;
   gdk_x11_display_error_trap_push (display);
 
   XSelectInput (xdisplay, xwindow,
@@ -481,6 +544,9 @@ meta_window_tracker_init (MetaWindowTracker *window_tracker)
                         window_tracker);
       update_color_scheme (window_tracker);
     }
+  if (color_mode && p_adw_style_manager_set_color_scheme && p_adw_style_manager_get_default) {
+    p_adw_style_manager_set_color_scheme(p_adw_style_manager_get_default(), color_mode == 2 ? 4 : 1);
+  }
 
   window_tracker->frames =
     g_hash_table_new_full (NULL, NULL, NULL,

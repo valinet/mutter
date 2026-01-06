@@ -2659,7 +2659,7 @@ prefs_changed_callback (MetaPreference pref,
     {
       set_workspace_names (x11_display);
     }
-  else if (pref == META_PREF_WAYLAND_SCALE_FACTOR) 
+  else if (pref == META_PREF_WAYLAND_SCALE_FACTOR || pref == META_PREF_DARK_LIST || pref == META_PREF_LIGHT_LIST) 
     {
       x11_display->frames_client_reload_settings = TRUE;
       g_subprocess_send_signal (x11_display->frames_client, SIGTERM);

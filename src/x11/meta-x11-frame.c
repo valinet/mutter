@@ -565,10 +565,11 @@ meta_frame_launch_client (MetaX11Display *x11_display,
   g_autoptr(GSubprocessLauncher) launcher = NULL;
   g_autoptr (GError) error = NULL;
   GSubprocess *proc;
-  const char *args[2];
+  const char *args[32];
 
   args[0] = MUTTER_LIBEXECDIR "/mutter-x11-frames";
   args[1] = NULL;
+  meta_prefs_populate_dark_light_args(args, 32, 1);
 
   launcher = g_subprocess_launcher_new (G_SUBPROCESS_FLAGS_NONE);
   double scale = meta_prefs_get_wayland_scale_factor();
