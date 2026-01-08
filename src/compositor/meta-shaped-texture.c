@@ -38,6 +38,11 @@
 #include "compositor/meta-shaped-texture-private.h"
 #include "core/boxes-private.h"
 #include "mtk/mtk.h"
+#include "meta/meta-window-actor.h"
+#include "compositor/meta-window-actor-private.h"
+#include "core/window-private.h"
+#include "wayland/meta-wayland-surface-private.h"
+#include "wayland/meta-wayland-subsurface.h"
 
 #include <math.h>
 
@@ -823,6 +828,7 @@ flip_ints (int *x,
 
 static void
 do_paint_content (MetaShapedTexture   *stex,
+                  ClutterActor        *actor,
                   ClutterPaintNode    *root_node,
                   ClutterPaintContext *paint_context,
                   ClutterActorBox     *alloc,
@@ -885,13 +891,39 @@ do_paint_content (MetaShapedTexture   *stex,
   if (mtk_monitor_transform_is_rotated (stex->transform))
     flip_ints (&sample_width, &sample_height);
 
-  gboolean cond = meta_actor_painting_untransformed (framebuffer,
-                                         dst_width, dst_height,
-                                         sample_width, sample_height,
-                                         &transforms);
-  gboolean cond_w = (fmod(stex->geometry_scale, 1) != 0 && (int)(dst_width * stex->geometry_scale) == sample_width - 1 && fabs(transforms.x_scale - 1.0) < 1e-3);
-  gboolean cond_h = (fmod(stex->geometry_scale, 1) != 0 && (int)(dst_height * stex->geometry_scale) == sample_height - 1 && fabs(transforms.y_scale - 1.0) < 1e-3);                           
-  if (cond_w || cond_h || cond)
+  gboolean skip = FALSE;
+  MetaWindowActor *window_actor = meta_window_actor_from_clutter_actor(actor);
+  if (window_actor) {
+    float geometry_scale = meta_window_actor_get_geometry_scale(window_actor);
+    if (!G_APPROX_VALUE (geometry_scale, (int)geometry_scale, FLT_EPSILON)) {
+      if (meta_window_actor_has_rounded_corners(window_actor)) {
+        int frac = meta_window_actor_uses_fractional_scale_v1(window_actor);
+        if (!frac) {
+          MetaWindow *window = meta_window_actor_get_meta_window(window_actor);
+          if (window) {
+            MetaWaylandSurface *wayland_surface = meta_window_get_wayland_surface(window);
+            if (wayland_surface) {
+              skip = wayland_surface->fractional_scale.resource != NULL;
+              MetaWaylandSurface *subsurface_surface;
+              META_WAYLAND_SURFACE_FOREACH_SUBSURFACE (&wayland_surface->applied_state, subsurface_surface)
+              {
+                skip = subsurface_surface->fractional_scale.resource != NULL;
+              }
+              meta_window_actor_set_uses_fractional_scale_v1(window_actor, skip ? 1 : 2);
+            }
+          }
+        } else skip = (frac == 1);
+      }
+    }
+  }
+
+  if (meta_actor_painting_untransformed (framebuffer,
+                                          dst_width, dst_height,
+                                          sample_width, sample_height,
+                                          &transforms) ||
+      (fmod(stex->geometry_scale, 1) != 0 && (int)(dst_width * stex->geometry_scale) == sample_width - 1 && fabs(transforms.x_scale - 1.0) < 1e-3) || 
+      (fmod(stex->geometry_scale, 1) != 0 && (int)(dst_height * stex->geometry_scale) == sample_height - 1 && fabs(transforms.y_scale - 1.0) < 1e-3) ||
+      skip)
     {
       min_filter = COGL_PIPELINE_FILTER_NEAREST;
       mag_filter = COGL_PIPELINE_FILTER_NEAREST;
@@ -1139,7 +1171,7 @@ meta_shaped_texture_paint_content (ClutterContent      *content,
   opacity = clutter_actor_get_paint_opacity (actor);
   clutter_actor_get_content_box (actor, &alloc);
 
-  do_paint_content (stex, root_node, paint_context, &alloc, opacity);
+  do_paint_content (stex, actor, root_node, paint_context, &alloc, opacity);
 }
 
 static gboolean

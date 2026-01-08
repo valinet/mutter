@@ -60,3 +60,15 @@ void meta_window_actor_freeze (MetaWindowActor *self);
 
 META_EXPORT
 void meta_window_actor_thaw (MetaWindowActor *self);
+
+META_EXPORT
+gboolean meta_window_actor_has_rounded_corners(MetaWindowActor *window_actor);
+
+META_EXPORT
+MetaWindowActor *meta_window_actor_from_clutter_actor (ClutterActor *actor);
+
+META_EXPORT
+int meta_window_actor_uses_fractional_scale_v1(MetaWindowActor *window_actor);
+
+META_EXPORT
+void meta_window_actor_set_uses_fractional_scale_v1(MetaWindowActor *window_actor, int status);

@@ -90,6 +90,9 @@ typedef struct _MetaWindowActorPrivate
 
   /* whether the associated window was created during a window drag */
   unsigned int tied_to_drag : 1;
+
+  gboolean has_rounded_corners;
+  int uses_fractional_scale_v1;
 } MetaWindowActorPrivate;
 
 enum
@@ -109,6 +112,7 @@ enum
   PROP_0,
 
   PROP_META_WINDOW,
+  PROP_HAS_ROUNDED_CORNERS,
 
   N_PROPS
 };
@@ -285,6 +289,10 @@ meta_window_actor_class_init (MetaWindowActorClass *klass)
     g_param_spec_object ("meta-window", NULL, NULL,
                          META_TYPE_WINDOW,
                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+  obj_props[PROP_HAS_ROUNDED_CORNERS] =
+    g_param_spec_boolean ("has-rounded-corners", NULL, NULL,
+                          FALSE,
+                          G_PARAM_READWRITE);
   g_object_class_install_properties (object_class, N_PROPS, obj_props);
 }
 
@@ -296,6 +304,8 @@ meta_window_actor_init (MetaWindowActor *self)
 
   priv->surface_actors = g_ptr_array_new ();
   priv->geometry_scale = 1;
+  priv->has_rounded_corners = FALSE;
+  priv->uses_fractional_scale_v1 = 0;
   priv->is_effectively_visible = FALSE;
 
   g_signal_connect (self, "cloned",
@@ -701,6 +711,9 @@ meta_window_actor_set_property (GObject      *object,
       g_signal_connect_object (priv->window, "notify::appears-focused",
                                G_CALLBACK (window_appears_focused_notify), self, 0);
       break;
+    case PROP_HAS_ROUNDED_CORNERS:
+      priv->has_rounded_corners = g_value_get_boolean (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -722,6 +735,9 @@ meta_window_actor_get_property (GObject      *object,
     case PROP_META_WINDOW:
       g_value_set_object (value, priv->window);
       break;
+    case PROP_HAS_ROUNDED_CORNERS:
+      g_value_set_boolean (value, priv->has_rounded_corners);
+      break;      
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -1913,4 +1929,41 @@ meta_window_actor_is_tied_to_drag (MetaWindowActor *window_actor)
   MetaWindowActorPrivate *priv =
     meta_window_actor_get_instance_private (window_actor);
   return priv->tied_to_drag;
+}
+
+gboolean
+meta_window_actor_has_rounded_corners(MetaWindowActor *window_actor)
+{
+  MetaWindowActorPrivate *priv =
+    meta_window_actor_get_instance_private (window_actor);
+  return priv->has_rounded_corners;
+}
+
+MetaWindowActor *
+meta_window_actor_from_clutter_actor (ClutterActor *actor)
+{
+    while (actor) {
+        if (META_IS_WINDOW_ACTOR (actor))
+            return META_WINDOW_ACTOR (actor);
+
+        actor = clutter_actor_get_parent (actor);
+    }
+
+    return NULL;
+}
+
+int
+meta_window_actor_uses_fractional_scale_v1(MetaWindowActor *window_actor)
+{
+  MetaWindowActorPrivate *priv =
+    meta_window_actor_get_instance_private (window_actor);
+  return priv->uses_fractional_scale_v1;
+}
+
+void
+meta_window_actor_set_uses_fractional_scale_v1(MetaWindowActor *window_actor, int status)
+{
+  MetaWindowActorPrivate *priv =
+    meta_window_actor_get_instance_private (window_actor);
+  priv->uses_fractional_scale_v1 = status;
 }
