@@ -120,6 +120,7 @@ static MetaButtonLayout button_layout;
 static JsonNode *wayland_scale_factor = NULL;
 static char **dark_list = NULL;
 static char **light_list = NULL;
+static char **inhibit_list = NULL;
 
 /* NULL-terminated array */
 static char **workspace_names = NULL;
@@ -485,6 +486,14 @@ static MetaStringArrayPreference preferences_string_array[] =
       },
       NULL,
       &light_list,
+    },
+    {
+      { "inhibit-list",
+        SCHEMA_MUTTER,
+        META_PREF_INHIBIT_LIST,
+      },
+      NULL,
+      &inhibit_list,
     },
     { { NULL, 0, 0 }, NULL },
   };
@@ -1819,6 +1828,9 @@ meta_preference_to_string (MetaPreference pref)
 
     case META_PREF_LIGHT_LIST:
       return "LIGHT_LIST";
+
+    case META_PREF_INHIBIT_LIST:
+      return "INHIBIT_LIST";
     }
 
   return "(unknown)";
@@ -2371,4 +2383,16 @@ meta_prefs_populate_dark_light_args(const char **arr, int arr_size, int arr_idx)
   arr[arr_idx++] = NULL;
 
   return TRUE;
+}
+
+gboolean
+meta_prefs_window_inhibits_shortcuts(const char* className) {
+  g_return_val_if_fail(inhibit_list, FALSE);
+
+  int inhibit_len = g_strv_length(inhibit_list);
+  for (int i = 0; i < inhibit_len; i++)
+    if (!g_strcmp0(inhibit_list[i], className))
+      return TRUE;
+
+  return FALSE;
 }

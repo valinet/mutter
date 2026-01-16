@@ -179,6 +179,9 @@ meta_window_xwayland_shortcuts_inhibited (MetaWindow         *window,
   MetaWaylandCompositor *compositor =
     meta_context_get_wayland_compositor (context);
 
+  if (meta_window_is_fullscreen(window) && window->res_class && meta_prefs_window_inhibits_shortcuts(window->res_class))
+    return TRUE;
+
   return meta_wayland_compositor_is_shortcuts_inhibited (compositor, source);
 }
 
